@@ -9,21 +9,23 @@ const lastUpdated = ref(null)
 
 const averagePrice = computed(() => {
   if (!fuelData.value.length) return 0
-  const sum = fuelData.value.reduce((acc, item) => acc + item.price_per_liter, 0)
-  return (sum / fuelData.value.length).toFixed(2)
+  const pertalitePrices = fuelData.value.filter(item => item.pertalite).map(item => item.pertalite)
+  if (pertalitePrices.length === 0) return 0
+  const sum = pertalitePrices.reduce((acc, price) => acc + price, 0)
+  return (sum / pertalitePrices.length).toLocaleString('id-ID')
 })
 
 const cheapest = computed(() => {
   if (!fuelData.value.length) return null
   return fuelData.value.reduce((min, item) =>
-    item.price_per_liter < min.price_per_liter ? item : min
+    (item.pertalite || Infinity) < (min.pertalite || Infinity) ? item : min
   )
 })
 
 const mostExpensive = computed(() => {
   if (!fuelData.value.length) return null
   return fuelData.value.reduce((max, item) =>
-    item.price_per_liter > max.price_per_liter ? item : max
+    (item.pertalite || 0) > (max.pertalite || 0) ? item : max
   )
 })
 
@@ -70,8 +72,8 @@ function toggleDataSource() {
   <div class="dashboard-container">
     <!-- Header -->
     <header class="header">
-      <h1>⛽ Global Fuel Intelligence Dashboard</h1>
-      <p class="subtitle">Real-time gasoline prices worldwide</p>
+      <h1>⛽ Indonesian Fuel Price Dashboard</h1>
+      <p class="subtitle">Real-time BBM prices by province</p>
     </header>
 
     <!-- Controls -->
@@ -82,7 +84,7 @@ function toggleDataSource() {
           :disabled="loading"
           class="btn btn-primary"
         >
-          {{ loading ? '🔄 Scraping...' : '🔄 Fetch Prices' }}
+          {{ loading ? '🔄 Scraping...' : '🔄 Update Prices' }}
         </button>
         
         <button
@@ -92,15 +94,6 @@ function toggleDataSource() {
         >
           🗑️ Clear
         </button>
-
-        <label class="toggle-label">
-          <input
-            type="checkbox"
-            v-model="useFallback"
-            :disabled="loading"
-          />
-          <span>Use Demo Data</span>
-        </label>
       </div>
 
       <div v-if="lastUpdated" class="timestamp">
@@ -116,25 +109,25 @@ function toggleDataSource() {
     <!-- Stats Cards -->
     <section v-if="fuelData.length" class="stats">
       <div class="stat-card">
-        <div class="stat-label">Total Countries</div>
+        <div class="stat-label">Total Provinces</div>
         <div class="stat-value">{{ fuelData.length }}</div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-label">Average Price</div>
-        <div class="stat-value">${{ averagePrice }}/L</div>
+        <div class="stat-label">Avg Pertalite</div>
+        <div class="stat-value">Rp {{ averagePrice }}</div>
       </div>
 
       <div class="stat-card">
         <div class="stat-label">Cheapest</div>
-        <div class="stat-value">{{ cheapest?.country }}</div>
-        <div class="stat-subtext">${{ cheapest?.price_per_liter }}/L</div>
+        <div class="stat-value">{{ cheapest?.location }}</div>
+        <div class="stat-subtext">Rp {{ cheapest?.pertalite?.toLocaleString('id-ID') }}</div>
       </div>
 
       <div class="stat-card">
         <div class="stat-label">Most Expensive</div>
-        <div class="stat-value">{{ mostExpensive?.country }}</div>
-        <div class="stat-subtext">${{ mostExpensive?.price_per_liter }}/L</div>
+        <div class="stat-value">{{ mostExpensive?.location }}</div>
+        <div class="stat-subtext">Rp {{ mostExpensive?.pertalite?.toLocaleString('id-ID') }}</div>
       </div>
     </section>
 
@@ -149,7 +142,7 @@ function toggleDataSource() {
     <div v-else-if="!loading" class="empty-state">
       <div class="empty-icon">⛽</div>
       <h2>No Data Yet</h2>
-      <p>Click "Fetch Prices" to load fuel price data</p>
+      <p>Click "Update Prices" to load Indonesian fuel price data</p>
     </div>
   </div>
 </template>
