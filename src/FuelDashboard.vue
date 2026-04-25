@@ -3,9 +3,29 @@ import { ref, computed } from 'vue'
 import FuelPriceTable from './FuelPriceTable.vue'
 
 const fuelData = ref([])
+const analysis = ref(null)
+const effectiveDate = ref(null)
 const loading = ref(false)
 const error = ref(null)
 const lastUpdated = ref(null)
+const selectedFuelType = ref('pertalite')
+
+const fuelTypes = [
+  { key: 'pertalite', label: 'Pertalite' },
+  { key: 'pertamax', label: 'Pertamax' },
+  { key: 'pertamax_turbo', label: 'Pertamax Turbo' },
+  { key: 'pertamax_green_95', label: 'Pertamax Green 95' },
+  { key: 'biosolar_subsidi', label: 'Biosolar Subsidi' },
+  { key: 'dexlite', label: 'Dexlite' },
+  { key: 'pertamina_dex', label: 'Pertamina Dex' },
+  { key: 'biosolar_non_subsidi', label: 'Biosolar Non-Subsidi' },
+  { key: 'pertamax_pertashop', label: 'Pertamax Pertashop' },
+]
+
+const selectedFuelAnalysis = computed(() => {
+  if (!analysis.value) return null
+  return analysis.value[selectedFuelType.value]
+})
 
 const averagePrice = computed(() => {
   if (!fuelData.value.length) return 0
@@ -34,7 +54,6 @@ async function scrapeFuelPrices() {
   error.value = null
   
   try {
-    // Call the API endpoint (works both locally and on Vercel)
     const response = await fetch('/api/fuel')
     
     if (!response.ok) {
@@ -45,6 +64,8 @@ async function scrapeFuelPrices() {
     
     if (result.success && result.data && result.data.length > 0) {
       fuelData.value = result.data
+      analysis.value = result.analysis
+      effectiveDate.value = result.effectiveDate
       lastUpdated.value = new Date().toLocaleString()
     } else {
       throw new Error('No data received from API')
@@ -59,12 +80,10 @@ async function scrapeFuelPrices() {
 
 function clearData() {
   fuelData.value = []
+  analysis.value = null
+  effectiveDate.value = null
   lastUpdated.value = null
   error.value = null
-}
-
-function toggleDataSource() {
-  scrapeFuelPrices()
 }
 </script>
 
@@ -74,6 +93,7 @@ function toggleDataSource() {
     <header class="header">
       <h1>⛽ Indonesian Fuel Price Dashboard</h1>
       <p class="subtitle">Real-time BBM prices by province</p>
+      <p v-if="effectiveDate" class="effective-date">Berlaku per tanggal {{ effectiveDate }}</p>
     </header>
 
     <!-- Controls -->
@@ -106,28 +126,34 @@ function toggleDataSource() {
       ⚠️ {{ error }}
     </div>
 
-    <!-- Stats Cards -->
-    <section v-if="fuelData.length" class="stats">
-      <div class="stat-card">
-        <div class="stat-label">Total Provinces</div>
-        <div class="stat-value">{{ fuelData.length }}</div>
+    <!-- Fuel Type Selector -->
+    <section v-if="fuelData.length && analysis" class="fuel-selector">
+      <label>Select Fuel Type:</label>
+      <select v-model="selectedFuelType" class="select-input">
+        <option v-for="type in fuelTypes" :key="type.key" :value="type.key">
+          {{ type.label }}
+        </option>
+      </select>
+    </section>
+
+    <!-- Analysis Cards -->
+    <section v-if="selectedFuelAnalysis" class="analysis">
+      <div class="analysis-card cheapest">
+        <div class="analysis-label">💰 Cheapest</div>
+        <div class="analysis-location">{{ selectedFuelAnalysis.cheapest.location }}</div>
+        <div class="analysis-price">Rp {{ selectedFuelAnalysis.cheapest.price.toLocaleString('id-ID') }}</div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-label">Avg Pertalite</div>
-        <div class="stat-value">Rp {{ averagePrice }}</div>
+      <div class="analysis-card highest">
+        <div class="analysis-label">📈 Most Expensive</div>
+        <div class="analysis-location">{{ selectedFuelAnalysis.highest.location }}</div>
+        <div class="analysis-price">Rp {{ selectedFuelAnalysis.highest.price.toLocaleString('id-ID') }}</div>
       </div>
 
-      <div class="stat-card">
-        <div class="stat-label">Cheapest</div>
-        <div class="stat-value">{{ cheapest?.location }}</div>
-        <div class="stat-subtext">Rp {{ cheapest?.pertalite?.toLocaleString('id-ID') }}</div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-label">Most Expensive</div>
-        <div class="stat-value">{{ mostExpensive?.location }}</div>
-        <div class="stat-subtext">Rp {{ mostExpensive?.pertalite?.toLocaleString('id-ID') }}</div>
+      <div class="analysis-card average">
+        <div class="analysis-label">📊 Average Price</div>
+        <div class="analysis-value">Rp {{ selectedFuelAnalysis.average.toLocaleString('id-ID') }}</div>
+        <div class="analysis-subtext">{{ selectedFuelAnalysis.count }} provinces</div>
       </div>
     </section>
 
@@ -176,8 +202,15 @@ function toggleDataSource() {
 
 .subtitle {
   font-size: 1.1rem;
-  margin: 0;
+  margin: 0 0 0.5rem 0;
   opacity: 0.9;
+}
+
+.effective-date {
+  font-size: 0.95rem;
+  margin: 0.5rem 0 0 0;
+  opacity: 0.8;
+  font-style: italic;
 }
 
 .controls {
@@ -299,6 +332,97 @@ function toggleDataSource() {
   color: #999;
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+.fuel-selector {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.fuel-selector label {
+  font-weight: 600;
+  color: #333;
+}
+
+.select-input {
+  padding: 0.75rem 1rem;
+  border: 2px solid #667eea;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.select-input:hover {
+  border-color: #764ba2;
+}
+
+.analysis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.analysis-card {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-top: 4px solid #667eea;
+}
+
+.analysis-card.cheapest {
+  border-top-color: #10b981;
+}
+
+.analysis-card.highest {
+  border-top-color: #ef4444;
+}
+
+.analysis-card.average {
+  border-top-color: #f59e0b;
+}
+
+.analysis-label {
+  color: #666;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.analysis-location {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.analysis-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.analysis-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 0.25rem;
+}
+
+.analysis-subtext {
+  color: #999;
+  font-size: 0.85rem;
 }
 
 .empty-state {

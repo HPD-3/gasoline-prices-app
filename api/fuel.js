@@ -10,13 +10,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const results = await scrapeFuelPrices();
+    const { data, date } = await scrapeFuelPrices();
 
-    if (results.length > 0) {
+    if (data.length > 0) {
+      const analysis = analyzeFuelPrices(data);
       return res.status(200).json({
         success: true,
-        count: results.length,
-        data: results,
+        count: data.length,
+        data: data,
+        analysis: analysis,
+        effectiveDate: date,
         source: "live",
         timestamp: new Date().toISOString(),
       });
@@ -24,20 +27,26 @@ export default async function handler(req, res) {
 
     // Return fallback data if scraping fails
     const fallbackData = getFallbackData();
+    const analysis = analyzeFuelPrices(fallbackData);
     return res.status(200).json({
       success: true,
       count: fallbackData.length,
       data: fallbackData,
+      analysis: analysis,
+      effectiveDate: "18 April 2026",
       source: "fallback",
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
     console.error("API error:", err.message);
     const fallbackData = getFallbackData();
+    const analysis = analyzeFuelPrices(fallbackData);
     return res.status(200).json({
       success: true,
       count: fallbackData.length,
       data: fallbackData,
+      analysis: analysis,
+      effectiveDate: "18 April 2026",
       source: "fallback",
       timestamp: new Date().toISOString(),
     });
@@ -62,16 +71,22 @@ async function scrapeFuelPrices() {
     const $ = cheerio.load(data);
     const results = [];
 
+    // Extract the effective date: "Berlaku per tanggal 18 April 2026"
+    let effectiveDate = "18 April 2026";
+    const dateText = $("body").text();
+    const dateMatch = dateText.match(/Berlaku per tanggal\s+(\d+\s+\w+\s+\d{4})/i);
+    if (dateMatch) {
+      effectiveDate = dateMatch[1];
+    }
+
     // Try multiple selectors to find the table
     let tableRows = $("table tbody tr");
     
     if (tableRows.length === 0) {
-      // Try alternate selector
       tableRows = $("tbody tr");
     }
     
     if (tableRows.length === 0) {
-      // Try to find all tr elements in any table
       tableRows = $("tr").filter((i, el) => {
         const cells = $(el).find("td");
         return cells.length >= 2;
@@ -122,7 +137,7 @@ async function scrapeFuelPrices() {
     });
 
     console.log(`Scraped ${results.length} locations from MyPertamina`);
-    return results;
+    return { data: results, date: effectiveDate };
   } catch (error) {
     console.error("Scraping error:", error.message);
     throw error;
@@ -136,6 +151,53 @@ function extractPrice(text) {
     return parseInt(priceIDR);
   }
   return null;
+}
+
+function analyzeFuelPrices(data) {
+  const fuelTypes = [
+    { key: "pertalite", label: "Pertalite" },
+    { key: "pertamax", label: "Pertamax" },
+    { key: "pertamax_turbo", label: "Pertamax Turbo" },
+    { key: "pertamax_green_95", label: "Pertamax Green 95" },
+    { key: "biosolar_subsidi", label: "Biosolar Subsidi" },
+    { key: "dexlite", label: "Dexlite" },
+    { key: "pertamina_dex", label: "Pertamina Dex" },
+    { key: "biosolar_non_subsidi", label: "Biosolar Non-Subsidi" },
+    { key: "pertamax_pertashop", label: "Pertamax Pertashop" },
+  ];
+
+  const analysis = {};
+
+  fuelTypes.forEach(({ key, label }) => {
+    const prices = data
+      .filter(item => item[key] !== null && item[key] !== undefined)
+      .map(item => ({ price: item[key], location: item.location }));
+
+    if (prices.length > 0) {
+      const sorted = prices.sort((a, b) => a.price - b.price);
+      const cheapest = sorted[0];
+      const highest = sorted[sorted.length - 1];
+      const avgPrice = Math.round(
+        prices.reduce((sum, item) => sum + item.price, 0) / prices.length
+      );
+
+      analysis[key] = {
+        label: label,
+        cheapest: {
+          price: cheapest.price,
+          location: cheapest.location,
+        },
+        highest: {
+          price: highest.price,
+          location: highest.location,
+        },
+        average: avgPrice,
+        count: prices.length,
+      };
+    }
+  });
+
+  return analysis;
 }
 
 function getFallbackData() {
