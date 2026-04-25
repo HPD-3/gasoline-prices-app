@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { getFuelPrices } from './fuelService.js'
 import FuelPriceTable from './FuelPriceTable.vue'
 
 const fuelData = ref([])
@@ -33,30 +32,20 @@ async function scrapeFuelPrices() {
   error.value = null
   
   try {
-    // Try local service first (for dev)
-    try {
-      const result = await getFuelPrices()
-      if (result.success && result.data && result.data.length > 0) {
-        fuelData.value = result.data
-        lastUpdated.value = new Date().toLocaleString()
-        return
-      }
-    } catch (localErr) {
-      console.warn('Local service failed, trying API:', localErr.message)
-    }
-
-    // Fall back to API endpoint (for production)
+    // Call the API endpoint (works both locally and on Vercel)
     const response = await fetch('/api/fuel')
+    
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
     }
     
     const result = await response.json()
+    
     if (result.success && result.data && result.data.length > 0) {
       fuelData.value = result.data
       lastUpdated.value = new Date().toLocaleString()
     } else {
-      throw new Error('No data received')
+      throw new Error('No data received from API')
     }
   } catch (err) {
     error.value = `Failed to fetch fuel data: ${err.message}`
