@@ -1,7 +1,7 @@
 /**
  * Vercel Serverless Function - Fuel Prices API
  * Scrapes Indonesian fuel prices from MyPertamina
- * URL: https://mypertamina.id/about/product-price
+ * Returns all fuel types: Pertalite, Pertamax, Pertamax Turbo, etc.
  */
 
 export default async function handler(req, res) {
@@ -62,22 +62,25 @@ async function scrapeFuelPrices() {
     const $ = cheerio.load(data);
     const results = [];
 
-    // Parse the table rows - looking for Province/Location | Pertalite price (first fuel type)
+    // Parse the table rows - extract all fuel types
     $("table tbody tr").each((i, el) => {
       const cells = $(el).find("td");
       
       if (cells.length >= 2) {
         const location = $(cells[0]).text().trim();
-        const priceText = $(cells[1]).text().trim();
         
-        // Extract price in Rupiah (e.g., "Rp 10.000" -> 10000)
-        const priceMatch = priceText.match(/Rp\s*([\d.]+)/);
+        // Extract all fuel prices
+        const pertalite = extractPrice($(cells[1]).text());
+        const pertamax = cells.length > 2 ? extractPrice($(cells[2]).text()) : null;
+        const pertamaxTurbo = cells.length > 3 ? extractPrice($(cells[3]).text()) : null;
+        const pertamaxGreen95 = cells.length > 4 ? extractPrice($(cells[4]).text()) : null;
+        const biosolarSubsidi = cells.length > 5 ? extractPrice($(cells[5]).text()) : null;
+        const dexlite = cells.length > 6 ? extractPrice($(cells[6]).text()) : null;
+        const pertaminaDex = cells.length > 7 ? extractPrice($(cells[7]).text()) : null;
+        const biosolarNonSubsidi = cells.length > 8 ? extractPrice($(cells[8]).text()) : null;
+        const pertamaxPertashop = cells.length > 9 ? extractPrice($(cells[9]).text()) : null;
         
-        if (location && priceMatch && location.length > 3) {
-          // Convert Rp to numeric value (remove dots used as thousand separators)
-          let priceIDR = priceMatch[1].replace(/\./g, "");
-          let priceUSD = parseInt(priceIDR) / 16000; // Approximate exchange rate
-          
+        if (location && location.length > 3) {
           // Clean up location name
           let cleanLocation = location
             .replace(/^Prov\.\s*/, "")
@@ -85,10 +88,15 @@ async function scrapeFuelPrices() {
           
           results.push({
             location: cleanLocation,
-            price_per_liter: parseFloat(priceUSD.toFixed(2)),
-            currency: "USD",
-            currency_local: "IDR",
-            price_idr: parseInt(priceIDR),
+            pertalite: pertalite,
+            pertamax: pertamax,
+            pertamax_turbo: pertamaxTurbo,
+            pertamax_green_95: pertamaxGreen95,
+            biosolar_subsidi: biosolarSubsidi,
+            dexlite: dexlite,
+            pertamina_dex: pertaminaDex,
+            biosolar_non_subsidi: biosolarNonSubsidi,
+            pertamax_pertashop: pertamaxPertashop,
             updated_at: new Date().toISOString(),
           });
         }
@@ -102,30 +110,137 @@ async function scrapeFuelPrices() {
   }
 }
 
+function extractPrice(text) {
+  const priceMatch = text.match(/Rp\s*([\d.]+)/);
+  if (priceMatch) {
+    let priceIDR = priceMatch[1].replace(/\./g, "");
+    return parseInt(priceIDR);
+  }
+  return null;
+}
+
 function getFallbackData() {
   return [
-    { location: "DKI Jakarta", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Jawa Barat", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Jawa Tengah", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "DI Yogyakarta", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Jawa Timur", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Bali", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Aceh", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Sumatera Utara", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Sumatera Barat", price_per_liter: 0.656, currency: "USD", currency_local: "IDR", price_idr: 10500, updated_at: new Date().toISOString() },
-    { location: "Riau", price_per_liter: 0.656, currency: "USD", currency_local: "IDR", price_idr: 10500, updated_at: new Date().toISOString() },
-    { location: "Kepulauan Riau", price_per_liter: 0.656, currency: "USD", currency_local: "IDR", price_idr: 10500, updated_at: new Date().toISOString() },
-    { location: "Jambi", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Bengkulu", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Sumatera Selatan", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Lampung", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Banten", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Kalimantan Barat", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Kalimantan Tengah", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
-    { location: "Kalimantan Selatan", price_per_liter: 0.656, currency: "USD", currency_local: "IDR", price_idr: 10500, updated_at: new Date().toISOString() },
-    { location: "Sulawesi Utara", price_per_liter: 0.625, currency: "USD", currency_local: "IDR", price_idr: 10000, updated_at: new Date().toISOString() },
+    {
+      location: "Aceh",
+      pertalite: 10000,
+      pertamax: 12600,
+      pertamax_turbo: 19850,
+      pertamax_green_95: null,
+      biosolar_subsidi: 6800,
+      dexlite: 24150,
+      pertamina_dex: 24450,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12500,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "Sumatera Utara",
+      pertalite: 10000,
+      pertamax: 12600,
+      pertamax_turbo: 19850,
+      pertamax_green_95: null,
+      biosolar_subsidi: 6800,
+      dexlite: 24150,
+      pertamina_dex: 24450,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12500,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "Sumatera Barat",
+      pertalite: 10000,
+      pertamax: 12900,
+      pertamax_turbo: 20250,
+      pertamax_green_95: null,
+      biosolar_subsidi: 6800,
+      dexlite: 24650,
+      pertamina_dex: 24950,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12800,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "DKI Jakarta",
+      pertalite: 10000,
+      pertamax: 12300,
+      pertamax_turbo: 19400,
+      pertamax_green_95: 12900,
+      biosolar_subsidi: 6800,
+      dexlite: 23600,
+      pertamina_dex: 23900,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12200,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "Jawa Barat",
+      pertalite: 10000,
+      pertamax: 12300,
+      pertamax_turbo: 19400,
+      pertamax_green_95: 12900,
+      biosolar_subsidi: 6800,
+      dexlite: 23600,
+      pertamina_dex: 23900,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12200,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "Jawa Tengah",
+      pertalite: 10000,
+      pertamax: 12300,
+      pertamax_turbo: 19400,
+      pertamax_green_95: 12900,
+      biosolar_subsidi: 6800,
+      dexlite: 23600,
+      pertamina_dex: 23900,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12200,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "DI Yogyakarta",
+      pertalite: 10000,
+      pertamax: 12300,
+      pertamax_turbo: 19400,
+      pertamax_green_95: 12900,
+      biosolar_subsidi: 6800,
+      dexlite: 23600,
+      pertamina_dex: 23900,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12200,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "Jawa Timur",
+      pertalite: 10000,
+      pertamax: 12300,
+      pertamax_turbo: 19400,
+      pertamax_green_95: 12900,
+      biosolar_subsidi: 6800,
+      dexlite: 23600,
+      pertamina_dex: 23900,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12200,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      location: "Bali",
+      pertalite: 10000,
+      pertamax: 12300,
+      pertamax_turbo: 19400,
+      pertamax_green_95: null,
+      biosolar_subsidi: 6800,
+      dexlite: 23600,
+      pertamina_dex: 23900,
+      biosolar_non_subsidi: null,
+      pertamax_pertashop: 12200,
+      updated_at: new Date().toISOString(),
+    },
   ];
 }
+
 
 
 
