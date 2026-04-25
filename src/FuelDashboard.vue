@@ -66,12 +66,12 @@ async function scrapeFuelPrices() {
       fuelData.value = result.data
       analysis.value = result.analysis
       effectiveDate.value = result.effectiveDate
-      lastUpdated.value = new Date().toLocaleString()
+      lastUpdated.value = new Date().toLocaleString('id-ID')
     } else {
-      throw new Error('No data received from API')
+      throw new Error('Tidak ada data dari API')
     }
   } catch (err) {
-    error.value = `Failed to fetch fuel data: ${err.message}`
+    error.value = `Gagal mengambil data BBM: ${err.message}`
     console.error('API error:', err.message)
   } finally {
     loading.value = false
@@ -91,8 +91,8 @@ function clearData() {
   <div class="dashboard-container">
     <!-- Header -->
     <header class="header">
-      <h1>⛽ Indonesian Fuel Price Dashboard</h1>
-      <p class="subtitle">Real-time BBM prices by province</p>
+      <h1>⛽ Dashboard Harga BBM Indonesia</h1>
+      <p class="subtitle">Harga BBM real-time di seluruh provinsi</p>
       <p v-if="effectiveDate" class="effective-date">Berlaku per tanggal {{ effectiveDate }}</p>
     </header>
 
@@ -104,7 +104,7 @@ function clearData() {
           :disabled="loading"
           class="btn btn-primary"
         >
-          {{ loading ? '🔄 Scraping...' : '🔄 Update Prices' }}
+          {{ loading ? '⏳ Memuat...' : '🔄 Perbarui Harga' }}
         </button>
         
         <button
@@ -112,12 +112,12 @@ function clearData() {
           :disabled="!fuelData.length"
           class="btn btn-secondary"
         >
-          🗑️ Clear
+          🗑️ Hapus
         </button>
       </div>
 
       <div v-if="lastUpdated" class="timestamp">
-        Last updated: {{ lastUpdated }}
+        Diperbarui: {{ lastUpdated }}
       </div>
     </section>
 
@@ -128,7 +128,7 @@ function clearData() {
 
     <!-- Fuel Type Selector -->
     <section v-if="fuelData.length && analysis" class="fuel-selector">
-      <label>Select Fuel Type:</label>
+      <label>Pilih Jenis BBM:</label>
       <select v-model="selectedFuelType" class="select-input">
         <option v-for="type in fuelTypes" :key="type.key" :value="type.key">
           {{ type.label }}
@@ -139,21 +139,21 @@ function clearData() {
     <!-- Analysis Cards -->
     <section v-if="selectedFuelAnalysis" class="analysis">
       <div class="analysis-card cheapest">
-        <div class="analysis-label">💰 Cheapest</div>
+        <div class="analysis-label">💰 Termurah</div>
         <div class="analysis-location">{{ selectedFuelAnalysis.cheapest.location }}</div>
         <div class="analysis-price">Rp {{ selectedFuelAnalysis.cheapest.price.toLocaleString('id-ID') }}</div>
       </div>
 
       <div class="analysis-card highest">
-        <div class="analysis-label">📈 Most Expensive</div>
+        <div class="analysis-label">📈 Termahal</div>
         <div class="analysis-location">{{ selectedFuelAnalysis.highest.location }}</div>
         <div class="analysis-price">Rp {{ selectedFuelAnalysis.highest.price.toLocaleString('id-ID') }}</div>
       </div>
 
       <div class="analysis-card average">
-        <div class="analysis-label">📊 Average Price</div>
+        <div class="analysis-label">📊 Harga Rata-rata</div>
         <div class="analysis-value">Rp {{ selectedFuelAnalysis.average.toLocaleString('id-ID') }}</div>
-        <div class="analysis-subtext">{{ selectedFuelAnalysis.count }} provinces</div>
+        <div class="analysis-subtext">{{ selectedFuelAnalysis.count }} provinsi</div>
       </div>
     </section>
 
@@ -167,8 +167,8 @@ function clearData() {
     <!-- Empty State -->
     <div v-else-if="!loading" class="empty-state">
       <div class="empty-icon">⛽</div>
-      <h2>No Data Yet</h2>
-      <p>Click "Update Prices" to load Indonesian fuel price data</p>
+      <h2>Belum Ada Data</h2>
+      <p>Klik "Perbarui Harga" untuk memuat data harga BBM Indonesia</p>
     </div>
   </div>
 </template>
@@ -182,35 +182,53 @@ function clearData() {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #d4a574 0%, #c85a54 50%, #8b4513 100%);
   min-height: 100vh;
+  position: relative;
+}
+
+.dashboard-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px);
+  pointer-events: none;
 }
 
 .header {
   text-align: center;
   color: white;
   margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .header h1 {
-  font-size: 2.5rem;
+  font-size: 2.8rem;
   margin: 0 0 0.5rem 0;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
 .subtitle {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   margin: 0 0 0.5rem 0;
-  opacity: 0.9;
+  opacity: 0.95;
+  font-weight: 500;
 }
 
 .effective-date {
   font-size: 0.95rem;
   margin: 0.5rem 0 0 0;
-  opacity: 0.8;
+  opacity: 0.85;
   font-style: italic;
+  color: #fff8dc;
 }
 
 .controls {
