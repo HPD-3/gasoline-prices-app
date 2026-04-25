@@ -13,35 +13,45 @@ const props = defineProps({
 })
 
 const sortedData = computed(() => {
-  return [...props.data].sort((a, b) => b.price_per_liter - a.price_per_liter)
+  return [...props.data].sort((a, b) => {
+    const priceA = a.pertalite || 0;
+    const priceB = b.pertalite || 0;
+    return priceB - priceA;
+  })
 })
 </script>
 
 <template>
   <section class="table-container">
     <div class="table-header">
-      <h2>Fuel Prices by Country</h2>
-      <p class="table-info">{{ data.length }} countries • Sorted by price (highest first)</p>
+      <h2>Indonesian Fuel Prices by Province</h2>
+      <p class="table-info">{{ data.length }} provinces • Prices in IDR (Indonesian Rupiah)</p>
     </div>
 
     <div class="table-wrapper">
       <table class="fuel-table">
         <thead>
           <tr>
-            <th class="rank">Rank</th>
-            <th class="country">Country</th>
-            <th class="price">Price/Liter</th>
-            <th class="currency">Currency</th>
-            <th class="updated">Last Updated</th>
+            <th class="location">Provinsi</th>
+            <th class="pertalite">Pertalite</th>
+            <th class="pertamax">Pertamax</th>
+            <th class="pertamax-turbo">Pertamax Turbo</th>
+            <th class="green">Green 95</th>
+            <th class="biosolar">Biosolar</th>
+            <th class="dexlite">Dexlite</th>
+            <th class="dex">Dex</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) in sortedData" :key="item.country" :class="getPriceClass(item.price_per_liter)">
-            <td class="rank">{{ index + 1 }}</td>
-            <td class="country">{{ item.country }}</td>
-            <td class="price"><strong>${{ item.price_per_liter.toFixed(2) }}</strong></td>
-            <td class="currency">{{ item.currency }}</td>
-            <td class="updated">{{ formatDate(item.updated_at) }}</td>
+          <tr v-for="(item, index) in sortedData" :key="item.location">
+            <td class="location"><strong>{{ item.location }}</strong></td>
+            <td class="pertalite" :class="getPriceClass(item.pertalite)">{{ formatPrice(item.pertalite) }}</td>
+            <td class="pertamax" :class="getPriceClass(item.pertamax)">{{ formatPrice(item.pertamax) }}</td>
+            <td class="pertamax-turbo" :class="getPriceClass(item.pertamax_turbo)">{{ formatPrice(item.pertamax_turbo) }}</td>
+            <td class="green" :class="getPriceClass(item.pertamax_green_95)">{{ formatPrice(item.pertamax_green_95) }}</td>
+            <td class="biosolar" :class="getPriceClass(item.biosolar_subsidi)">{{ formatPrice(item.biosolar_subsidi) }}</td>
+            <td class="dexlite" :class="getPriceClass(item.dexlite)">{{ formatPrice(item.dexlite) }}</td>
+            <td class="dex" :class="getPriceClass(item.pertamina_dex)">{{ formatPrice(item.pertamina_dex) }}</td>
           </tr>
         </tbody>
       </table>
@@ -53,22 +63,14 @@ const sortedData = computed(() => {
 export default {
   methods: {
     getPriceClass(price) {
-      if (price > 1.50) return 'expensive'
-      if (price > 1.00) return 'moderate'
+      if (!price) return 'empty';
+      if (price > 20000) return 'expensive'
+      if (price > 12000) return 'moderate'
       return 'cheap'
     },
-    formatDate(dateString) {
-      try {
-        const date = new Date(dateString)
-        return date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      } catch {
-        return dateString
-      }
+    formatPrice(price) {
+      if (!price) return '-'
+      return `Rp ${price.toLocaleString('id-ID')}`
     },
   },
 }
@@ -116,18 +118,30 @@ export default {
 }
 
 .fuel-table th {
-  padding: 1rem;
-  text-align: left;
+  padding: 1rem 0.75rem;
+  text-align: center;
   font-weight: 600;
   color: #666;
   text-transform: uppercase;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
 }
 
+.fuel-table th.location {
+  text-align: left;
+}
+
 .fuel-table td {
-  padding: 1rem;
+  padding: 1rem 0.75rem;
   border-bottom: 1px solid #f0f0f0;
+  text-align: center;
+}
+
+.fuel-table td.location {
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  min-width: 150px;
 }
 
 .fuel-table tbody tr {
@@ -138,46 +152,20 @@ export default {
   background-color: #f9f9f9;
 }
 
-.fuel-table tr.cheap {
-  --accent-color: #10b981;
+.fuel-table td.cheap {
+  color: #10b981;
 }
 
-.fuel-table tr.moderate {
-  --accent-color: #f59e0b;
+.fuel-table td.moderate {
+  color: #f59e0b;
 }
 
-.fuel-table tr.expensive {
-  --accent-color: #ef4444;
+.fuel-table td.expensive {
+  color: #ef4444;
 }
 
-.fuel-table .rank {
-  color: #999;
-  width: 60px;
-  text-align: center;
-  font-weight: 500;
-}
-
-.fuel-table .country {
-  font-weight: 600;
-  color: #333;
-  width: 20%;
-}
-
-.fuel-table .price {
-  color: var(--accent-color, #667eea);
-  font-size: 1.1rem;
-  width: 15%;
-}
-
-.fuel-table .currency {
-  color: #666;
-  width: 12%;
-}
-
-.fuel-table .updated {
-  color: #999;
-  font-size: 0.85rem;
-  width: 25%;
+.fuel-table td.empty {
+  color: #ccc;
 }
 
 @media (max-width: 768px) {
@@ -187,7 +175,7 @@ export default {
 
   .fuel-table th,
   .fuel-table td {
-    padding: 0.75rem;
+    padding: 0.5rem 0.25rem;
   }
 
   .table-header {
