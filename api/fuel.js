@@ -1,6 +1,6 @@
 /**
  * Vercel Serverless Function - Fuel Prices API
- * For now: Returns fallback data (live scraping is blocked by CORS)
+ * Scrapes fuel prices from isibens.in
  */
 
 export default async function handler(req, res) {
@@ -9,14 +9,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Just return the fallback data
-    // (Live scraping is blocked by the website)
+    const results = await scrapeFuelPrices();
+
+    if (results.length > 0) {
+      return res.status(200).json({
+        success: true,
+        count: results.length,
+        data: results,
+        source: "live",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Return fallback data if scraping fails
     const fallbackData = getFallbackData();
     return res.status(200).json({
       success: true,
       count: fallbackData.length,
       data: fallbackData,
-      source: "database",
+      source: "fallback",
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
@@ -26,9 +37,80 @@ export default async function handler(req, res) {
       success: true,
       count: fallbackData.length,
       data: fallbackData,
-      source: "database",
+      source: "fallback",
       timestamp: new Date().toISOString(),
     });
+  }
+}
+
+async function scrapeFuelPrices() {
+  try {
+    const axios = await import("axios");
+    const cheerio = await import("cheerio");
+
+    const url = "https://isibens.in/";
+
+    const { data } = await axios.default.get(url, {
+      timeout: 15000,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    });
+
+    const $ = cheerio.load(data);
+    const results = [];
+
+    // Parse fuel prices from the page
+    // Look for common price patterns and country names
+    $("table tr, div.price-row, .fuel-item").each((i, el) => {
+      const text = $(el).text();
+
+      // Try to extract country and price
+      const cells = $(el).find("td, .price-cell, [class*='price']");
+
+      if (cells.length >= 2) {
+        const country = $(cells[0]).text().trim();
+        const priceText = $(cells[1]).text().trim();
+        const priceMatch = priceText.match(/[\d.]+/);
+
+        if (country && priceMatch && country.length > 2) {
+          results.push({
+            country,
+            price_per_liter: parseFloat(priceMatch[0]),
+            currency: "USD",
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+    });
+
+    // Also try extracting from paragraphs or divs with price data
+    if (results.length === 0) {
+      $("p, div, span").each((i, el) => {
+        const text = $(el).text();
+        const match = text.match(/([A-Za-z\s]+)[\s:]*(\d+\.?\d*)/);
+
+        if (match && match[1] && match[2]) {
+          const country = match[1].trim();
+          const price = parseFloat(match[2]);
+
+          if (country.length > 2 && price > 0 && price < 10) {
+            results.push({
+              country,
+              price_per_liter: price,
+              currency: "USD",
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+      });
+    }
+
+    return results.slice(0, 50);
+  } catch (error) {
+    console.error("Scraping error:", error.message);
+    throw error;
   }
 }
 
@@ -56,5 +138,6 @@ function getFallbackData() {
     { country: "South Korea", price_per_liter: 1.77, currency: "USD", updated_at: new Date().toISOString() },
   ];
 }
+
 
 
