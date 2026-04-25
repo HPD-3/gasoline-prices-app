@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { getDemoData } from './apiService.js'
+import { getFuelPrices } from './fuelService.js'
 import FuelPriceTable from './FuelPriceTable.vue'
 
 const fuelData = ref([])
@@ -33,27 +33,34 @@ async function scrapeFuelPrices() {
   error.value = null
   
   try {
-    // Try to call backend API
+    // Try local service first (for dev)
+    try {
+      const result = await getFuelPrices()
+      if (result.success && result.data && result.data.length > 0) {
+        fuelData.value = result.data
+        lastUpdated.value = new Date().toLocaleString()
+        return
+      }
+    } catch (localErr) {
+      console.warn('Local service failed, trying API:', localErr.message)
+    }
+
+    // Fall back to API endpoint (for production)
     const response = await fetch('/api/fuel')
-    
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
     }
     
     const result = await response.json()
-    
-    if (result.success && result.data) {
+    if (result.success && result.data && result.data.length > 0) {
       fuelData.value = result.data
       lastUpdated.value = new Date().toLocaleString()
     } else {
-      throw new Error('Invalid response from API')
+      throw new Error('No data received')
     }
   } catch (err) {
-    // Fallback to demo data on error
-    console.warn('API call failed, using demo data:', err.message)
-    const demoData = getDemoData()
-    fuelData.value = demoData
-    lastUpdated.value = new Date().toLocaleString()
+    error.value = `Failed to fetch fuel data: ${err.message}`
+    console.error('API error:', err.message)
   } finally {
     loading.value = false
   }
@@ -66,7 +73,7 @@ function clearData() {
 }
 
 function toggleDataSource() {
-  useFallback.value = !useFallback.value
+  scrapeFuelPrices()
 }
 </script>
 
