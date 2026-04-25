@@ -103,7 +103,8 @@ async function scrapeFuelPrices() {
       }
     });
 
-    return results.slice(0, 100);
+    console.log(`Scraped ${results.length} locations from MyPertamina`);
+    return results;
   } catch (error) {
     console.error("Scraping error:", error.message);
     throw error;
