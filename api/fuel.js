@@ -62,8 +62,26 @@ async function scrapeFuelPrices() {
     const $ = cheerio.load(data);
     const results = [];
 
+    // Try multiple selectors to find the table
+    let tableRows = $("table tbody tr");
+    
+    if (tableRows.length === 0) {
+      // Try alternate selector
+      tableRows = $("tbody tr");
+    }
+    
+    if (tableRows.length === 0) {
+      // Try to find all tr elements in any table
+      tableRows = $("tr").filter((i, el) => {
+        const cells = $(el).find("td");
+        return cells.length >= 2;
+      });
+    }
+
+    console.log(`Found ${tableRows.length} table rows`);
+
     // Parse the table rows - extract all fuel types
-    $("table tbody tr").each((i, el) => {
+    tableRows.each((i, el) => {
       const cells = $(el).find("td");
       
       if (cells.length >= 2) {
@@ -80,7 +98,7 @@ async function scrapeFuelPrices() {
         const biosolarNonSubsidi = cells.length > 8 ? extractPrice($(cells[8]).text()) : null;
         const pertamaxPertashop = cells.length > 9 ? extractPrice($(cells[9]).text()) : null;
         
-        if (location && location.length > 3) {
+        if (location && location.length > 3 && pertalite) {
           // Clean up location name
           let cleanLocation = location
             .replace(/^Prov\.\s*/, "")
@@ -122,123 +140,44 @@ function extractPrice(text) {
 
 function getFallbackData() {
   return [
-    {
-      location: "Aceh",
-      pertalite: 10000,
-      pertamax: 12600,
-      pertamax_turbo: 19850,
-      pertamax_green_95: null,
-      biosolar_subsidi: 6800,
-      dexlite: 24150,
-      pertamina_dex: 24450,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12500,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "Sumatera Utara",
-      pertalite: 10000,
-      pertamax: 12600,
-      pertamax_turbo: 19850,
-      pertamax_green_95: null,
-      biosolar_subsidi: 6800,
-      dexlite: 24150,
-      pertamina_dex: 24450,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12500,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "Sumatera Barat",
-      pertalite: 10000,
-      pertamax: 12900,
-      pertamax_turbo: 20250,
-      pertamax_green_95: null,
-      biosolar_subsidi: 6800,
-      dexlite: 24650,
-      pertamina_dex: 24950,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12800,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "DKI Jakarta",
-      pertalite: 10000,
-      pertamax: 12300,
-      pertamax_turbo: 19400,
-      pertamax_green_95: 12900,
-      biosolar_subsidi: 6800,
-      dexlite: 23600,
-      pertamina_dex: 23900,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12200,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "Jawa Barat",
-      pertalite: 10000,
-      pertamax: 12300,
-      pertamax_turbo: 19400,
-      pertamax_green_95: 12900,
-      biosolar_subsidi: 6800,
-      dexlite: 23600,
-      pertamina_dex: 23900,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12200,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "Jawa Tengah",
-      pertalite: 10000,
-      pertamax: 12300,
-      pertamax_turbo: 19400,
-      pertamax_green_95: 12900,
-      biosolar_subsidi: 6800,
-      dexlite: 23600,
-      pertamina_dex: 23900,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12200,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "DI Yogyakarta",
-      pertalite: 10000,
-      pertamax: 12300,
-      pertamax_turbo: 19400,
-      pertamax_green_95: 12900,
-      biosolar_subsidi: 6800,
-      dexlite: 23600,
-      pertamina_dex: 23900,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12200,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "Jawa Timur",
-      pertalite: 10000,
-      pertamax: 12300,
-      pertamax_turbo: 19400,
-      pertamax_green_95: 12900,
-      biosolar_subsidi: 6800,
-      dexlite: 23600,
-      pertamina_dex: 23900,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12200,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      location: "Bali",
-      pertalite: 10000,
-      pertamax: 12300,
-      pertamax_turbo: 19400,
-      pertamax_green_95: null,
-      biosolar_subsidi: 6800,
-      dexlite: 23600,
-      pertamina_dex: 23900,
-      biosolar_non_subsidi: null,
-      pertamax_pertashop: 12200,
-      updated_at: new Date().toISOString(),
-    },
+    { location: "Aceh", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Sumatera Utara", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Sumatera Barat", pertalite: 10000, pertamax: 12900, pertamax_turbo: 20250, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24650, pertamina_dex: 24950, biosolar_non_subsidi: null, pertamax_pertashop: 12800, updated_at: new Date().toISOString() },
+    { location: "Riau", pertalite: 10000, pertamax: 12900, pertamax_turbo: 20250, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24650, pertamina_dex: 24950, biosolar_non_subsidi: null, pertamax_pertashop: 12800, updated_at: new Date().toISOString() },
+    { location: "Kepulauan Riau", pertalite: 10000, pertamax: 12900, pertamax_turbo: 20250, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24650, pertamina_dex: 24950, biosolar_non_subsidi: null, pertamax_pertashop: 12800, updated_at: new Date().toISOString() },
+    { location: "Jambi", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Bengkulu", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Sumatera Selatan", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Bangka-Belitung", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Lampung", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "DKI Jakarta", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: 12900, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "Banten", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: 12900, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "Jawa Barat", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: 12900, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "Jawa Tengah", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: 12900, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "DI Yogyakarta", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: 12900, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "Jawa Timur", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: 12900, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "Bali", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "Nusa Tenggara Barat", pertalite: 10000, pertamax: 12300, pertamax_turbo: 19400, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 23600, pertamina_dex: 23900, biosolar_non_subsidi: null, pertamax_pertashop: 12200, updated_at: new Date().toISOString() },
+    { location: "Nusa Tenggara Timur", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: 24050, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Kalimantan Barat", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Kalimantan Tengah", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Kalimantan Selatan", pertalite: 10000, pertamax: 12900, pertamax_turbo: 20250, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24650, pertamina_dex: 24950, biosolar_non_subsidi: null, pertamax_pertashop: 12800, updated_at: new Date().toISOString() },
+    { location: "Kalimantan Timur", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Kalimantan Utara", pertalite: 10000, pertamax: 12900, pertamax_turbo: 20250, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24650, pertamina_dex: 24950, biosolar_non_subsidi: null, pertamax_pertashop: 12800, updated_at: new Date().toISOString() },
+    { location: "Sulawesi Utara", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Gorontalo", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Sulawesi Tengah", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Sulawesi Tenggara", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Sulawesi Selatan", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Sulawesi Barat", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Maluku", pertalite: 10000, pertamax: 12600, pertamax_turbo: null, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: null, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Maluku Utara", pertalite: 10000, pertamax: 12600, pertamax_turbo: null, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: null, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Papua", pertalite: 10000, pertamax: 12600, pertamax_turbo: 19850, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: null, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Papua Barat", pertalite: 10000, pertamax: 12600, pertamax_turbo: null, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Papua Selatan", pertalite: 10000, pertamax: 12600, pertamax_turbo: null, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: null, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Papua Pegunungan", pertalite: 10000, pertamax: 12600, pertamax_turbo: null, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: null, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Papua Tengah", pertalite: 10000, pertamax: 12600, pertamax_turbo: null, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: null, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
+    { location: "Papua Barat Daya", pertalite: 10000, pertamax: 12600, pertamax_turbo: null, pertamax_green_95: null, biosolar_subsidi: 6800, dexlite: 24150, pertamina_dex: 24450, biosolar_non_subsidi: null, pertamax_pertashop: 12500, updated_at: new Date().toISOString() },
   ];
 }
 
